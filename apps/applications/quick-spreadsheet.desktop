@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Quick Spreadsheet
+GenericName=Spreadsheet
+Comment=Calculate, chart and analyse. Opens and saves .xlsx and .ods.
+Exec=quick-spreadsheet %U
+Icon=quick-spreadsheet
+Terminal=false
+Categories=Office;Spreadsheet;
+Keywords=spreadsheet;calc;excel;chart;formula;pivot;xlsx;ods;csv;
+StartupNotify=true
+StartupWMClass=quick-spreadsheet
+MimeType=application/vnd.oasis.opendocument.spreadsheet;application/vnd.oasis.opendocument.spreadsheet-template;application/vnd.ms-excel;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.openxmlformats-officedocument.spreadsheetml.template;text/csv;

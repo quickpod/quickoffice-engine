@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Quick Document
+GenericName=Word Processor
+Comment=Write letters, reports and books. Opens and saves .docx and .odt.
+Exec=quick-document %U
+Icon=quick-document
+Terminal=false
+Categories=Office;WordProcessor;
+Keywords=document;word;writer;text;letter;report;docx;odt;
+StartupNotify=true
+StartupWMClass=quick-document
+MimeType=application/vnd.oasis.opendocument.text;application/vnd.oasis.opendocument.text-template;application/vnd.oasis.opendocument.text-master;application/msword;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/vnd.openxmlformats-officedocument.wordprocessingml.template;application/rtf;text/rtf;

@@ -1,0 +1,6 @@
+# The exact LibreOffice source the Quick Office engine is built from.
+# Changing these two lines is what "rebasing onto a new LibreOffice" means.
+upstream=https://github.com/LibreOffice/core.git
+branch=libreoffice-26-8
+commit=df9c0a34c31523b068254dec3267a70195d91c45
+version=26.8.1.0.0

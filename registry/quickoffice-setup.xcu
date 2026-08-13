@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Quick Office - first-run suppression.
+
+  LibreOffice 26.8 shows a tabbed "You are running <product> for the first
+  time" wizard, and on later upgrades a What's New dialog or infobar. All
+  three come off ONE switch: sfx2/source/view/viewfrm.cxx gates the lot on
+  officecfg::Setup::Product::WhatsNew, so turning that off is the whole fix.
+
+  It is off because these are QuickOpen apps: the fleet does not greet you with
+  a wizard on first launch, and a "what's new in LibreOffice" panel would be
+  doubly wrong here - it names the wrong product and points at release notes
+  for something the user did not install.
+
+  Note the PATH: org.openoffice.Setup/Product, not Office.Common/Misc. The
+  similarly-named Misc keys govern the tip-of-the-day, which is handled in
+  quickoffice.xcu.
+
+  Apache-2.0, (c) 2026 QuickOpen.
+-->
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry"
+                    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                    oor:name="Setup" oor:package="org.openoffice">
+  <node oor:name="Product">
+    <prop oor:name="WhatsNew" oor:finalized="false">
+      <value>false</value>
+    </prop>
+  </node>
+</oor:component-data>

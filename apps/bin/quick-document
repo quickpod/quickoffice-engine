@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Quick Document — a face over the shared Quick Office engine.
+#
+# The engine is one binary; the module switch is what makes this Quick
+# Word Processor. WM_CLASS is forced so the desktop groups these windows under
+# Quick Document rather than under the engine's own class, which is what makes
+# three separate taskbar identities out of one program.
+#
+# Apache-2.0, (c) 2026 QuickOpen. Engine: MPL-2.0, based on LibreOffice.
+set -euo pipefail
+ENGINE="${QUICKOFFICE_ENGINE:-/opt/quickoffice}"
+SOFFICE="$ENGINE/program/soffice"
+
+if [ ! -x "$SOFFICE" ]; then
+  echo "Quick Document: the Quick Office engine is not installed at $ENGINE" >&2
+  echo "Install the quickoffice-engine package, or set QUICKOFFICE_ENGINE." >&2
+  exit 1
+fi
+
+exec "$SOFFICE" --writer \
+  -env:UserInstallation="file://${XDG_CONFIG_HOME:-$HOME/.config}/quickoffice" \
+  "$@"

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Quick Office — default UI layout per module.
+
+  `Active<Module>` picks which layout each module opens with. "notebookbar.ui"
+  is LibreOffice's Tabbed mode: a ribbon of contextual tabs across the top,
+  which is the layout the product brief asks for and the one a Word/Excel/
+  PowerPoint user already knows how to read.
+
+  This is a DEFAULT, not a lock (`oor:finalized="false"`). View > User
+  Interface still offers Standard Toolbar, Single Toolbar, Sidebar, Grouped
+  Compact and the rest, and whatever the user picks is remembered per module.
+
+  Note the asymmetry upstream: ActiveWriter/Calc/Impress already default to
+  "notebookbar.ui" here, but Applications/<Module>/Active — the setting the UI
+  actually reads on first run — defaults to "Default" (classic toolbars). Both
+  have to be set or the tabbed layout never appears.
+
+  Apache-2.0, (c) 2026 QuickOpen.
+-->
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry"
+                    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                    oor:name="ToolbarMode" oor:package="org.openoffice.Office.UI">
+
+  <prop oor:name="ActiveWriter" oor:finalized="false">
+    <value>notebookbar.ui</value>
+  </prop>
+  <prop oor:name="ActiveCalc" oor:finalized="false">
+    <value>notebookbar.ui</value>
+  </prop>
+  <prop oor:name="ActiveImpress" oor:finalized="false">
+    <value>notebookbar.ui</value>
+  </prop>
+  <prop oor:name="ActiveDraw" oor:finalized="false">
+    <value>notebookbar.ui</value>
+  </prop>
+
+  <node oor:name="Applications">
+    <node oor:name="Writer" oor:op="fuse">
+      <prop oor:name="Active" oor:finalized="false">
+        <value>notebookbar.ui</value>
+      </prop>
+    </node>
+    <node oor:name="Calc" oor:op="fuse">
+      <prop oor:name="Active" oor:finalized="false">
+        <value>notebookbar.ui</value>
+      </prop>
+    </node>
+    <node oor:name="Impress" oor:op="fuse">
+      <prop oor:name="Active" oor:finalized="false">
+        <value>notebookbar.ui</value>
+      </prop>
+    </node>
+    <node oor:name="Draw" oor:op="fuse">
+      <prop oor:name="Active" oor:finalized="false">
+        <value>notebookbar.ui</value>
+      </prop>
+    </node>
+  </node>
+</oor:component-data>

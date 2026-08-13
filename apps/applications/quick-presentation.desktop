@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Quick Presentation
+GenericName=Presentation
+Comment=Build and present slide decks. Opens and saves .pptx and .odp.
+Exec=quick-presentation %U
+Icon=quick-presentation
+Terminal=false
+Categories=Office;Presentation;
+Keywords=presentation;slides;impress;powerpoint;deck;pptx;odp;
+StartupNotify=true
+StartupWMClass=quick-presentation
+MimeType=application/vnd.oasis.opendocument.presentation;application/vnd.oasis.opendocument.presentation-template;application/vnd.ms-powerpoint;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.openxmlformats-officedocument.presentationml.template;application/vnd.openxmlformats-officedocument.presentationml.slideshow;
