@@ -101,7 +101,15 @@ if ($SkipVS) {
         $found = & $vswhere -latest -products * `
             -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
             -property installationPath 2>$null
-        if ($found) { $have = $true; Ok "already installed: $found" }
+        if ($found) {
+            # Present is not enough: an install from before clang-cl was added
+            # to the component list would sail through this check and then fail
+            # in configure. Look for the compiler itself.
+            $clang = Get-ChildItem $found -Filter "clang-cl.exe" -Recurse -ErrorAction SilentlyContinue |
+                     Select-Object -First 1
+            if ($clang) { $have = $true; Ok "already installed with clang-cl: $found" }
+            else { Ok "installed at $found but WITHOUT clang-cl - adding it" }
+        }
     }
     if (-not $have) {
         $bootstrap = Join-Path $Dl "vs_BuildTools.exe"
@@ -117,6 +125,23 @@ if ($SkipVS) {
             "--add","Microsoft.VisualStudio.Workload.VCTools",
             "--add","Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
             "--add","Microsoft.VisualStudio.Component.Windows11SDK.22621",
+            # Skia is built with clang-cl, not MSVC - the same rule as the
+            # Linux build, where Skia is the one component that insists on
+            # clang. Without these two, configure stops at "cannot determine
+            # the -showIncludes prefix" and the only alternative is
+            # --disable-skia, which costs GPU-accelerated rendering across the
+            # whole suite.
+            "--add","Microsoft.VisualStudio.Component.VC.Llvm.Clang",
+            "--add","Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset",
+            # ATL. extensions/source/activex is the ActiveX control that lets
+            # other Windows applications embed the office suite, and it
+            # #includes <atlbase.h>. Without ATL the build runs for well over
+            # an hour and then dies at the very end with
+            #     fatal error C1083: Cannot open include file: 'atlbase.h'
+            # LibreOffice does offer --disable-activex, but the brief here is
+            # "all possible capabilities", and dropping OLE/ActiveX embedding
+            # to save one VS component is the wrong trade.
+            "--add","Microsoft.VisualStudio.Component.VC.ATL",
             "--includeRecommended")
         $p = Start-Process $bootstrap -ArgumentList $args -Wait -PassThru -NoNewWindow
         # 3010 = success, reboot required. Not an error.
@@ -157,6 +182,98 @@ if (-not (Test-Path $cygBash)) { throw "Cygwin installed but $cygBash is missing
 Ok "cygwin ready: $cygBash"
 
 # ------------------------------------------------------------- 4. sanity pass
+# --------------------------------------------------------------- 3b. pkgconf
+# LibreOffice's Windows build needs a NATIVE pkgconf - one that emits
+# Windows-style paths - for harfbuzz's meson build. Cygwin's pkg-config is not
+# it. configure looks for the exact name "pkgconf-2.4.3.exe" because that is
+# what upstream's LODE toolchain ships, but no such MSI is published; the real
+# requirement is any recent native pkgconf, and presetting PKG_CONFIG makes
+# autoconf use it directly instead of searching for that filename.
+Say "pkgconf (native Windows, for harfbuzz/meson)"
+$existing = Get-ChildItem "$env:ProgramFiles" -Filter "pkgconf*" -Directory -ErrorAction SilentlyContinue
+if ($existing) {
+    Ok "already installed: $($existing[0].FullName)"
+} else {
+    $rel = Invoke-RestMethod "https://api.github.com/repos/pkgconf/pkgconf/releases/latest" `
+           -Headers @{ "User-Agent" = "quickoffice-provision" }
+    $asset = $rel.assets | Where-Object { $_.name -like "*x64*.msi" } | Select-Object -First 1
+    if (-not $asset) { throw "no x64 pkgconf MSI in release $($rel.tag_name)" }
+    $msi = Join-Path $Dl $asset.name
+    if (-not (Test-Path $msi)) { Invoke-WebRequest $asset.browser_download_url -OutFile $msi }
+    $p = Start-Process msiexec -ArgumentList @("/i","`"$msi`"","/quiet","/norestart") -Wait -PassThru
+    if ($p.ExitCode -notin 0,3010) { throw "pkgconf MSI failed: $($p.ExitCode)" }
+    Ok "installed $($asset.name)"
+}
+$found = Get-ChildItem "$env:ProgramFiles","${env:ProgramFiles(x86)}" -Filter "pkgconf*" `
+          -Directory -ErrorAction SilentlyContinue |
+          ForEach-Object { Get-ChildItem $_.FullName -Filter pkgconf.exe -Recurse -ErrorAction SilentlyContinue } |
+          Select-Object -First 1
+if ($found) { Ok ("pkgconf: " + $found.FullName) } else { throw "pkgconf.exe not found after install" }
+
+# ------------------------------------------------ 3b2. native Windows GNU make
+# NOT a preference - the build is wrong without it, in a way that surfaces
+# half an hour in.
+#
+# configure decides how to spell every tool path from ONE test (configure.ac,
+# win_short_path_for_make):
+#
+#     make -v | grep 'Built for Windows'  ->  GNUMAKE_WIN_NATIVE=TRUE
+#         TRUE : cygpath -sm  ->  C:/PROGRA~2/.../cl.exe    (Windows form)
+#         else : cygpath -u   ->  /cygdrive/c/PROGRA~2/...  (Cygwin only)
+#
+# Cygwin's own make reports "Built for x86_64-pc-cygwin", so the whole tree
+# gets cygdrive paths. That is survivable for most of the build, because
+# Cygwin make and Cygwin bash both understand them - which is exactly why it
+# gets 30 minutes in before anything complains.
+#
+# Then an external project reaches solenv/gcc-wrappers/wrapper.cxx, a NATIVE
+# Win32 binary that does CreateProcess(nullptr, "\"$REAL_BUILD_CC\" ...").
+# Win32 has never heard of /cygdrive, so it fails with error 2 and prints a
+# cl.exe command line that looks perfectly reasonable:
+#
+#     Error: could not create process ""/cygdrive/c/PROGRA~2/.../cl.exe" ...": 2
+#
+# The fix is upstream's: use the native make LibreOffice publishes for this.
+Say "native Windows GNU make (decides Windows vs Cygwin path spelling)"
+$makeExe = Join-Path $Root "bin\make.exe"
+if (Test-Path $makeExe) {
+    Ok "already present: $makeExe"
+} else {
+    New-Item -ItemType Directory -Force -Path (Split-Path $makeExe) | Out-Null
+    Invoke-WebRequest "https://dev-www.libreoffice.org/bin/cygwin/make-4.2.1-msvc.exe" `
+        -OutFile $makeExe
+    Ok "downloaded make-4.2.1-msvc.exe"
+}
+# Prove it is the native one; a silently-Cygwin make here costs another
+# half-hour build to discover.
+$mv = & $makeExe -v 2>&1 | Select-Object -First 2
+if (($mv -join " ") -notmatch "Built for Windows") {
+    throw "make.exe at $makeExe is not a native Win32 build: $($mv -join ' ')"
+}
+Ok ("make: " + ($mv | Select-Object -First 1))
+
+# ------------------------------------------------------- 3c. AV exclusions
+# LibreOffice's configure REFUSES to run while real-time scanning covers the
+# build tree, and it is right to: an AV that quarantines an intermediate object
+# mid-build produces failures that look like compiler bugs. It proves the point
+# by writing an EICAR test file and checking whether it survives.
+#
+# The exclusion is SCOPED TO THE BUILD DIRECTORY - Defender stays on for the
+# rest of the machine. This is what upstream's own Windows build instructions
+# ask for, and it also stops Defender from scanning 40 GB of intermediates on
+# every build.
+Say "Windows Defender exclusion for the build tree"
+try {
+    $existing = (Get-MpPreference).ExclusionPath
+    foreach ($p in @($Root, $CygRoot)) {
+        if ($existing -contains $p) { Ok "already excluded: $p" }
+        else { Add-MpPreference -ExclusionPath $p -ErrorAction Stop; Ok "excluded: $p" }
+    }
+} catch {
+    Warn "could not set an exclusion ($($_.Exception.Message))"
+    Warn "configure will refuse to run - add $Root manually in Windows Security"
+}
+
 Say "verifying the toolchain"
 # Ask CYGWIN, in one shell, rather than shelling out per-tool through cmd.
 # The previous version built a `cmd /c "<windows path with spaces> ..."` string
