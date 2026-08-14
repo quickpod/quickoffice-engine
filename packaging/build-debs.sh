@@ -100,10 +100,18 @@ for slug in quick-document quick-spreadsheet quick-presentation; do
            "$S/usr/share/doc/quickopen-$slug"
   install -m 0755 "$APP/bin/$slug" "$S/usr/bin/$slug"
   install -m 0644 "$APP/applications/$slug.desktop" "$S/usr/share/applications/"
-  [ -f "$APP/$slug.png" ] && install -m 0644 "$APP/$slug.png" \
-      "$S/usr/share/icons/hicolor/512x512/apps/$slug.png"
-  [ -f "$APP/$slug.svg" ] && install -m 0644 "$APP/$slug.svg" \
-      "$S/usr/share/icons/hicolor/scalable/apps/$slug.svg"
+  # Both names. The desktop entry says Icon=quickopen-<slug> (the themed name
+  # AIQuick ships), and the OS build used to sed that in AFTER install — which
+  # meant any package upgrade silently reverted it, along with anything else
+  # patched into these package-owned files. Ship the alias from the package
+  # instead: the icon resolves on Quick OS and on stock Ubuntu alike, and an
+  # upgrade cannot undo it.
+  for n in "$slug" "quickopen-$slug"; do
+    [ -f "$APP/$slug.png" ] && install -m 0644 "$APP/$slug.png" \
+        "$S/usr/share/icons/hicolor/512x512/apps/$n.png"
+    [ -f "$APP/$slug.svg" ] && install -m 0644 "$APP/$slug.svg" \
+        "$S/usr/share/icons/hicolor/scalable/apps/$n.svg"
+  done
   install -m 0644 "$ENGINE_REPO/NOTICE" "$S/usr/share/doc/quickopen-$slug/NOTICE"
 
   cat > "$S/DEBIAN/control" <<EOF
