@@ -1,0 +1,12 @@
+# The exact upstream Windows engine the Quick Office installers repackage (v1).
+# The Linux engine is a from-source build of the libreoffice-26-8 branch (see
+# ../../pin.txt, 26.8.1.0.0); the Windows source build is its own lead time
+# (../../windows/BUILD-STATUS.md). Until it lands, the Windows engine is the
+# OFFICIAL LibreOffice STABLE win64 MSI — which is why the Windows engine
+# version (26.2.x) trails the Linux one. Upstream binaries ship byte-identical
+# (TDF's Authenticode signatures intact); the Aura layer rides on top as files.
+#
+# sha256 is TDF's own, from the .msi.sha256 next to the download.
+libreoffice_version=26.2.5
+url=https://download.documentfoundation.org/libreoffice/stable/26.2.5/win/x86_64/LibreOffice_26.2.5_Win_x86-64.msi
+sha256=f15ba07bfcb0186986cf3171063506f5d207c11f8cc051ba0d135209e9e915f9
