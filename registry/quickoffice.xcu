@@ -19,8 +19,11 @@
     2. Follow the system       Application colours default to Automatic, so the
                                apps go dark/light with the desktop — the same
                                contract every other QuickOpen app honours.
-    3. Aura icons              our CC0-derived Colibre repaint (see
-                               aura-icons/make-aura-icons.py).
+    3. Icons follow the theme  SymbolStyle stays at upstream "auto" so the
+                               light/dark icon pair flips with the desktop;
+                               the Aura repaint (aura-icons/make-aura-icons.py)
+                               ships as a selectable option. Rationale in the
+                               Misc node below.
 
   Plus the AIQuick product requirements that are configuration rather than
   build flags: nothing checks a remote on its own (#2 zero egress, #3 no
@@ -33,11 +36,17 @@
                     oor:name="Common" oor:package="org.openoffice.Office">
 
   <node oor:name="Misc">
-    <!-- The Aura icon set. Layered over colibre/breeze by the icon-theme
-         fallback chain, so any icon we have not repainted still resolves. -->
-    <prop oor:name="SymbolStyle" oor:finalized="false">
-      <value>aura</value>
-    </prop>
+    <!-- Icon style stays at upstream's "auto" (no SymbolStyle override here).
+         2026-08-16, validated on the Quick OS 0.1.10 VM: an EXPLICIT theme
+         name is used literally in BOTH light and dark UI — LibreOffice's
+         IconThemeSelector only auto-pairs light/dark variants on the "auto"
+         path (vcl/source/app/IconThemeSelector.cxx). With SymbolStyle=aura
+         the dark ribbon rendered aura's dark-ink glyphs: near-invisible.
+         "auto" on Plasma resolves breeze/breeze_dark, which follow the Aura
+         theme flip live and match the OS's line-art icon language. The
+         images_aura*.zip sets stay installed as user-selectable options;
+         auto-pairing them needs a small core patch (deliberately not taken —
+         patches/ stays empty). -->
     <!-- No "you have not registered / send us data / what's new" on first run. -->
     <prop oor:name="FirstRun" oor:finalized="false">
       <value>false</value>

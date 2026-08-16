@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Quick Presentation — open straight into the editor.
+
+  Upstream Impress greets every new presentation with the modal "Select a
+  Template" dialog (Misc/NewDoc/AutoPilot, default true). PowerPoint puts you
+  in the editor immediately, and that is the mental model Quick Presentation
+  advertises — so the dialog is off BY DEFAULT, not removed: File > New from
+  Template and the dialog's own "Show this dialog at startup" checkbox
+  (Tools > Options > Impress > General) still bring it back per user.
+
+  Path verified against sd/source/ui/app/optsitem.cxx ("Misc/NewDoc/AutoPilot")
+  in the pinned core. Validated live on the Quick OS 0.1.10 VM 2026-08-16.
+
+  Apache-2.0, (c) 2026 QuickOpen.
+-->
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry"
+                    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+                    oor:name="Impress" oor:package="org.openoffice.Office">
+  <node oor:name="Misc">
+    <node oor:name="NewDoc">
+      <prop oor:name="AutoPilot" oor:finalized="false">
+        <value>false</value>
+      </prop>
+    </node>
+  </node>
+</oor:component-data>
