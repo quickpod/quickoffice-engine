@@ -10,3 +10,13 @@
 libreoffice_version=26.2.5
 url=https://download.documentfoundation.org/libreoffice/stable/26.2.5/win/x86_64/LibreOffice_26.2.5_Win_x86-64.msi
 sha256=f15ba07bfcb0186986cf3171063506f5d207c11f8cc051ba0d135209e9e915f9
+
+# VC++ RUNTIME (field defect fix): the first build copied "the" CRT DLLs out
+# of the extracted MSI into program\ — but msiextract dumps merge modules for
+# EVERY architecture and those copies were ARM64, so soffice crashed at launch
+# (AV in VCRUNTIME140_1.dll). No app-local CRT ships any more; the installers
+# chain-install Microsoft's own x64 redistributable silently when the machine
+# lacks VC14 >= 14.30. aka.ms/vs/17/release is a moving pointer, so the exact
+# payload is pinned by sha256 — when Microsoft rolls it, refresh BOTH lines.
+vcredist_url=https://aka.ms/vs/17/release/vc_redist.x64.exe
+vcredist_sha256=cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b

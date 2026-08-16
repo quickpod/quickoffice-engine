@@ -45,12 +45,21 @@ ENGINE="$(find "$WORK/msi" -type f -name soffice.exe -printf '%h\n' | head -1)"
 ENGINE="$(dirname "$ENGINE")"      # tree root: contains program/, share/, ...
 echo "   engine tree: $ENGINE"
 
-# The MSI's VC++ runtime merge modules target the system dir; app-local copies
-# in program\ keep the engine self-contained on machines without the redist.
-for dll in $(find "$WORK/msi" -type f \( -iname 'vcruntime*.dll' -o -iname 'msvcp*.dll' -o -iname 'concrt*.dll' -o -iname 'vccorlib*.dll' \) ! -path "$ENGINE/*"); do
-  base="$(basename "$dll")"
-  [ -f "$ENGINE/program/$base" ] || cp "$dll" "$ENGINE/program/$base"
-done
+# NO app-local VC++ runtime — FIELD DEFECT: the MSI carries merge modules for
+# SEVERAL architectures and msiextract dumps them all, so the "vcruntime" DLLs
+# grabbed from the extracted tree were ARM64 (PE machine 0xAA64); putting them
+# in program\ crashed soffice on launch (AV in VCRUNTIME140_1.dll). The x64
+# runtime comes from Microsoft's own vc_redist.x64.exe instead, which the
+# installers chain-install silently when the machine lacks VC14 >= 14.30
+# (pin + sha256 in windows-pin.txt). Strip ANY stray CRT DLLs the extraction
+# may have left inside program\ for the same reason.
+find "$ENGINE/program" -maxdepth 1 -type f \( -iname 'vcruntime*.dll' -o -iname 'msvcp*.dll' -o -iname 'concrt*.dll' -o -iname 'vccorlib*.dll' \) -delete
+VCREDIST="$DL/vc_redist.x64.exe"
+if [ ! -f "$VCREDIST" ]; then
+  curl -sL -o "$VCREDIST" "$(pin vcredist_url)"
+fi
+echo "$(pin vcredist_sha256)  $VCREDIST" | sha256sum -c - >/dev/null || { echo "!! vc_redist.x64.exe sha mismatch" >&2; exit 1; }
+echo "   vc_redist.x64.exe ok ($(du -h "$VCREDIST" | cut -f1))"
 
 # ---- 2. the Aura layer -----------------------------------------------------
 "$ENGINE_REPO/registry/install-registry.sh" "$ENGINE"
@@ -84,6 +93,7 @@ for slug in quick-document quick-spreadsheet quick-presentation; do
     -DDISPLAYVERSION="$DISPLAYVER" \
     -DVIVERSION="$LOVER.0" \
     -DESTSIZE_KB="$EST_KB" \
+    -DVCREDIST="$VCREDIST" \
     -DICOFILE="$ICO" \
     -DLAUNCHER="$ENGINE_REPO/packaging/launchers/$slug.cmd" \
     -DLICENSEFILE="$ENGINE_REPO/licenses/MPL-2.0.txt" \

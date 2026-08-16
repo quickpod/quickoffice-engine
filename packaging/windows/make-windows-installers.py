@@ -101,6 +101,22 @@ VIAddVersionKey "LegalCopyright" "Engine: MPL-2.0 (a derivative of LibreOffice).
 Section "Quick Office engine"
   SetRegView 64
   SetShellVarContext all
+  ; the engine needs the x64 VC14 runtime (14.30+). We deliberately ship NO
+  ; app-local CRT (see build.sh — the MSI's extracted copies were ARM64 and
+  ; crashed soffice); instead Microsoft's own redistributable is chained
+  ; silently when the machine lacks it.
+  ReadRegDWORD $1 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"
+  ReadRegDWORD $2 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Minor"
+  StrCmp $1 "1" 0 vcredist_install
+  IntCmp $2 30 vcredist_ok vcredist_install vcredist_ok
+vcredist_install:
+  DetailPrint "Installing the Microsoft Visual C++ runtime..."
+  InitPluginsDir
+  SetOutPath "$PLUGINSDIR"
+  File "${VCREDIST}"
+  ExecWait '"$PLUGINSDIR\vc_redist.x64.exe" /install /quiet /norestart' $3
+  DetailPrint "vc_redist.x64.exe exit code: $3"
+vcredist_ok:
   ; skip when this exact engine version is already installed (another Quick
   ; Office app put it there) — the whole point of the shared engine dir
   ReadRegStr $0 HKLM "${QOKEY}" "EngineVersion"
