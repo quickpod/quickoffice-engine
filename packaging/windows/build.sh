@@ -83,6 +83,16 @@ if [ "$naura" -lt 2 ]; then
 fi
 echo "   aura layer: registry overlay + $naura icon theme zips"
 
+# ---- 2b. signed payload binaries -------------------------------------------
+# The MSI's own binaries are TDF-signed (soffice.exe and ~30 others) and stay
+# untouched — vendor signatures are left alone. But the bundled CPython carries
+# 14 pip/setuptools launcher stubs that ship UNSIGNED, and an unsigned exe
+# inside an EV-signed installer is still unsigned once it is on disk. Those are
+# EV-signed and applied from the override tree; apply-overrides.sh then GATES
+# the whole payload, so a future LibreOffice release that adds an unsigned
+# binary fails this build instead of shipping quietly.
+"$ROOT/publish/scripts/apply-overrides.sh" "$ENGINE" "$ROOT/winbuild/overrides/quickoffice"
+
 # ---- 3. licences -----------------------------------------------------------
 mkdir -p "$ENGINE/licenses"
 cp "$ENGINE_REPO/NOTICE" "$ENGINE_REPO/LICENSING.md" "$ENGINE/"
