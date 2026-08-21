@@ -56,6 +56,15 @@ cp -a "$INSTDIR/." "$OPT/"
 # exactly how you end up shipping an overlay that upstream silently overrides.
 "$ENGINE_REPO/registry/install-registry.sh" "$OPT"
 
+# The brand layer, applied to the STAGED tree rather than trusted from the
+# source build. configure's --with-branding silently keeps the upstream asset
+# for any brand file the branding dir lacks, and the splash geometry in
+# progress.conf only ever reached the packaged installer's sofficerc, never
+# the instdir we cp -a from. Both were true of every deb shipped before
+# 2026-08-21. Running it here makes the deb's branding a property of the
+# package, and it is idempotent when the build did get it right.
+"$ENGINE_REPO/branding/install-branding.sh" "$OPT" "Quick Office" "$VERSION"
+
 INSTALLED_SIZE=$(du -sk "$STAGE" | cut -f1)
 cat > "$STAGE/DEBIAN/control" <<EOF
 Package: quickoffice-engine

@@ -47,6 +47,16 @@
          images_aura*.zip sets stay installed as user-selectable options;
          auto-pairing them needs a small core patch (deliberately not taken —
          patches/ stays empty). -->
+    <!-- The Start Center's donation button and its every-30-days banner.
+         Upstream defaults ShowDonation to true, which put a "Donate" button in
+         a QuickOpen product soliciting money for The Document Foundation, and
+         an outbound donation URL behind it — an affiliation we explicitly
+         disclaim (LICENSING.md rule #3) and an egress requirement #2 forbids.
+         Turning it off also retires shell/donate1.png + donate2.png; branding/
+         still ships neutral replacements so no TDF art sits in the tree. -->
+    <prop oor:name="ShowDonation" oor:finalized="true">
+      <value>false</value>
+    </prop>
     <!-- No "you have not registered / send us data / what's new" on first run. -->
     <prop oor:name="FirstRun" oor:finalized="false">
       <value>false</value>

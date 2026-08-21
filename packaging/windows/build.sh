@@ -63,6 +63,14 @@ echo "   vc_redist.x64.exe ok ($(du -h "$VCREDIST" | cut -f1))"
 
 # ---- 2. the Aura layer -----------------------------------------------------
 "$ENGINE_REPO/registry/install-registry.sh" "$ENGINE"
+
+# THE BRAND LAYER — and the reason this line exists: without it the repacked
+# MSI keeps TDF's own brand assets, so the splash a Windows user saw at startup
+# read "LibreOffice — The Document Foundation" and their profile was written to
+# AppData\LibreOffice. configure's --with-branding never runs on this path;
+# only this script brands the Windows tree. Version comes from windows-pin.txt,
+# not pin.txt: the Windows engine trails the Linux one.
+"$ENGINE_REPO/branding/install-branding.sh" "$ENGINE" "Quick Office" "$LOVER"
 AURA_SRC="${QUICKOFFICE_AURA_DIR:-$ROOT/office/core/instdir/share/config}"
 naura=0
 for z in "$AURA_SRC"/images_aura.zip "$AURA_SRC"/images_aura_dark.zip; do
