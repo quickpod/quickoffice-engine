@@ -76,11 +76,30 @@ Unicode true
 Name "${APPNAME}"
 OutFile "${OUTFILE}"
 InstallDir "$PROGRAMFILES64\QuickOpen\Quick Office"
-RequestExecutionLevel admin
+; TWO-PASS UNINSTALLER SIGNING.
+; NSIS has no compile-time way to emit an uninstaller: `WriteUninstaller` only
+; produces one when a built installer RUNS. So Uninstall-${APPKEY}.exe, the
+; binary a user launches from Add/Remove Programs, was unsigned — and being
+; admin-elevated it showed "Unknown publisher" on its UAC prompt.
+;
+; Pass 1 (-DUNINSTALLER_ONLY) compiles a payload-free stub that only writes the
+; uninstaller beside itself. It is run once on Windows, the result is EV-signed,
+; and pass 2 EMBEDS it with `File`. The uninstall Section compiles into both
+; passes, so the signed binary is byte-for-byte what pass 2 would have written.
+; Driver: publish/scripts/make-signed-uninstaller.sh
+!ifdef UNINSTALLER_ONLY
+  RequestExecutionLevel user
+!else
+  RequestExecutionLevel admin
+!endif
 ; signed after build — see the app installers: CRC off, signature is integrity
 CRCCheck off
+!ifdef UNINSTALLER_ONLY
+SetCompressor /SOLID zlib
+!else
 SetCompressor /SOLID lzma
 SetCompressorDictSize 64
+!endif
 
 VIProductVersion "${VIVERSION}"
 VIAddVersionKey "ProductName" "${APPNAME}"
@@ -97,6 +116,14 @@ VIAddVersionKey "LegalCopyright" "Engine: MPL-2.0 (a derivative of LibreOffice).
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "English"
+
+!ifdef UNINSTALLER_ONLY
+; Pass 1. Run with /S; drops Uninstall-${APPKEY}.exe beside the stub and exits.
+Section "gen"
+  SetOutPath "$EXEDIR"
+  WriteUninstaller "$EXEDIR\Uninstall-${APPKEY}.exe"
+SectionEnd
+!else
 
 Section "Quick Office engine"
   SetRegView 64
@@ -142,7 +169,8 @@ Section "@@NAME@@"
   File "${LAUNCHER}"
   File "/oname=NOTICE-${APPKEY}" "${NOTICEFILE}"
 
-  WriteUninstaller "$INSTDIR\Uninstall-${APPKEY}.exe"
+  ; the EV-signed uninstaller from pass 1, embedded rather than generated
+  File "/oname=Uninstall-${APPKEY}.exe" "${UNINSTALLER}"
 
   ; refcount: the engine stays while this key has any values
   WriteRegStr HKLM "${QOKEY}\Apps" "${SLUG}" "${DISPLAYVERSION}"
@@ -167,6 +195,8 @@ Section "@@NAME@@"
   ; file types (OpenWithProgids — never steals an existing default)
 @@ASSOC@@
 SectionEnd
+
+!endif   ; UNINSTALLER_ONLY
 
 Section "Uninstall"
   SetRegView 64

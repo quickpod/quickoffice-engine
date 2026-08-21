@@ -19,6 +19,7 @@ ROOT="$(cd "$REPOS/.." && pwd)"
 DL="${1:-$ROOT/winbuild/downloads}"
 OUT="${2:-$ROOT/winbuild/dist}"
 WORK="$ROOT/winbuild/work/quickoffice"
+SYSCA="${QUICKOPEN_SYSCA:-/etc/ssl/certs/ca-certificates.crt}"  # public roots, to READ the EV signer
 
 pin(){ awk -F= -v k="$1" '$1==k{print $2}' "$HERE/windows-pin.txt" | tr -d ' \r'; }
 LOVER="$(pin libreoffice_version)"        # e.g. 26.2.5
@@ -105,17 +106,46 @@ for slug in quick-document quick-spreadsheet quick-presentation; do
   EXE="$(python3 -c "print(''.join(w.capitalize() for w in '$slug'.split('-')))")"
   ICO="$WORK/$slug.ico"
   convert "$ROOT/publish/icons/$slug.png" -define icon:auto-resize=256,128,64,48,32,16 "$ICO"
-  makensis -V2 \
-    -DENGINE_PAYLOAD="$ENGINE" \
-    -DENGINE_VERSION="$LOVER" \
-    -DDISPLAYVERSION="$DISPLAYVER" \
-    -DVIVERSION="$LOVER.0" \
-    -DESTSIZE_KB="$EST_KB" \
-    -DVCREDIST="$VCREDIST" \
-    -DICOFILE="$ICO" \
-    -DLAUNCHER="$ENGINE_REPO/packaging/launchers/$slug.cmd" \
-    -DLICENSEFILE="$ENGINE_REPO/licenses/MPL-2.0.txt" \
-    -DNOTICEFILE="$ENGINE_REPO/NOTICE" \
+  # THE SIGNED UNINSTALLER — see the two-pass note in make-windows-installers.py.
+  # NSIS emits an uninstaller only when a built installer RUNS, so the generator
+  # stub must execute on Windows. Two modes over ONE argument list, so the two
+  # passes cannot drift in the defines they see. Each app has its OWN
+  # uninstaller (Uninstall-QuickDocument.exe etc.), so each needs its own pass.
+  NSIARGS=(
+    -DENGINE_PAYLOAD="$ENGINE"
+    -DENGINE_VERSION="$LOVER"
+    -DDISPLAYVERSION="$DISPLAYVER"
+    -DVIVERSION="$LOVER.0"
+    -DESTSIZE_KB="$EST_KB"
+    -DVCREDIST="$VCREDIST"
+    -DICOFILE="$ICO"
+    -DLAUNCHER="$ENGINE_REPO/packaging/launchers/$slug.cmd"
+    -DLICENSEFILE="$ENGINE_REPO/licenses/MPL-2.0.txt"
+    -DNOTICEFILE="$ENGINE_REPO/NOTICE"
+  )
+
+  if [ "${QUICKOPEN_UNINST_STUB_ONLY:-0}" = "1" ]; then
+    STUB="$ROOT/winbuild/uninstallers/$slug/stub.exe"
+    mkdir -p "$(dirname "$STUB")"
+    # -DUNINSTALLER must exist even though pass 1 skips the branch using it:
+    # makensis resolves ${...} at parse time, so an undefined symbol is an error.
+    makensis -V2 -DUNINSTALLER_ONLY -DUNINSTALLER=/dev/null \
+      "${NSIARGS[@]}" -DOUTFILE="$STUB" "$WORK/nsi/$EXE.nsi"
+    echo "   pass-1 stub: $STUB ($(du -h "$STUB" | cut -f1))"
+    continue
+  fi
+
+  UNINST="$ROOT/winbuild/uninstallers/$slug/Uninstall-$EXE.exe"
+  [ -f "$UNINST" ] || { echo "!! missing signed uninstaller at $UNINST" >&2
+    echo "!! build it: QUICKOPEN_UNINST_STUB_ONLY=1 $0" >&2; exit 1; }
+  EVOUT="$(osslsigncode verify -in "$UNINST" -CAfile "$SYSCA" 2>&1 || true)"
+  printf '%s' "$EVOUT" | grep -qi "CN=Dosvak LLC" || {
+    echo "!! uninstaller for $slug is NOT EV-signed — refusing to build" >&2
+    echo "!!   publish/scripts/sign-windows-artifact.sh $UNINST" >&2; exit 1; }
+  echo "   uninstaller: $(basename "$UNINST") $(sha256sum "$UNINST" | cut -c1-16)... (EV)"
+
+  makensis -V2 "${NSIARGS[@]}" \
+    -DUNINSTALLER="$UNINST" \
     -DOUTFILE="$OUT/$EXE-Setup.exe" \
     "$WORK/nsi/$EXE.nsi"
   echo "   $(du -h "$OUT/$EXE-Setup.exe" | cut -f1)  $OUT/$EXE-Setup.exe"
